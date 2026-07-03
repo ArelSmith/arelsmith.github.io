@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion, useInView, type Variants } from "motion/react";
 import { ReactTyped } from "react-typed";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 // Image
 import profile from "../../src/assets/profile.webp";
-import { useEffect, useRef, useState } from "react";
 
 const Jumbotron = () => {
   const sectionRef = useRef(null);
@@ -12,6 +13,12 @@ const Jumbotron = () => {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const isInView = useInView(sectionRef, {
     once: false,
+  });
+
+  const [settings, setSettings] = useState({
+    cv_url: "https://drive.google.com/file/d/1N8tszeV8zBmDDT6NFS0xzJQ3dQjO13lp/view?usp=sharing",
+    phone_number: "6288294102558",
+    email: "arelarel576@gmail.com",
   });
 
   const itemVariants: Variants = {
@@ -38,6 +45,24 @@ const Jumbotron = () => {
       },
     },
   };
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("id", 1)
+        .single();
+      if (data) {
+        setSettings({
+          cv_url: data.cv_url || settings.cv_url,
+          phone_number: data.phone_number || settings.phone_number,
+          email: data.email || settings.email,
+        });
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const updateScreenWidth = () => {
@@ -98,7 +123,7 @@ const Jumbotron = () => {
               className="flex flex-row justify-around lg:justify-start lg:gap-x-5 lg:w-100"
             >
               <a
-                href="https://drive.google.com/file/d/1N8tszeV8zBmDDT6NFS0xzJQ3dQjO13lp/view?usp=sharing"
+                href={settings.cv_url}
                 target="_blank"
                 className="text-white bg-tertiary hover:bg-[#5f2f1c] transition duration-150 px-4 py-2 rounded-2xl shadow-xl lg:text-2xl lg:px-6 lg:py-4"
               >
@@ -183,7 +208,7 @@ const Jumbotron = () => {
 
             <footer className="mt-6 flex justify-end gap-2">
               <Link
-                to="mailto:arelarel576@gmail.com"
+                to={`mailto:${settings.email}`}
                 className="rounded-2xl hover:cursor-pointer bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
               >
                 Email
@@ -192,8 +217,8 @@ const Jumbotron = () => {
               <Link
                 to={
                   isMobile
-                    ? "https://wa.me/6288294102558"
-                    : "https://web.whatsapp.com/send?phone=6288294102558"
+                    ? `https://wa.me/${settings.phone_number}`
+                    : `https://web.whatsapp.com/send?phone=${settings.phone_number}`
                 }
                 className="rounded-2xl hover:cursor-pointer bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
               >

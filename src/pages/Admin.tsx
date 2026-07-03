@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Lock,
   User as UserIcon,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
@@ -41,9 +42,22 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"projects" | "messages">(
+  const [activeTab, setActiveTab] = useState<"projects" | "messages" | "settings">(
     "projects",
   );
+
+  interface Settings {
+    cv_url: string;
+    phone_number: string;
+    email: string;
+  }
+
+  const [settings, setSettings] = useState<Settings>({
+    cv_url: "https://drive.google.com/file/d/1N8tszeV8zBmDDT6NFS0xzJQ3dQjO13lp/view?usp=sharing",
+    phone_number: "6288294102558",
+    email: "arelarel576@gmail.com",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Projects State
   const [projects, setProjects] = useState<Project[]>([]);
@@ -85,8 +99,43 @@ const Admin = () => {
     if (user) {
       fetchProjects();
       fetchMessages();
+      fetchSettings();
     }
   }, [user]);
+
+  const fetchSettings = async () => {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
+    if (!error && data) {
+      setSettings({
+        cv_url: data.cv_url || "",
+        phone_number: data.phone_number || "",
+        email: data.email || "",
+      });
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("settings")
+      .upsert({
+        id: 1,
+        cv_url: settings.cv_url,
+        phone_number: settings.phone_number,
+        email: settings.email,
+      });
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("Settings updated successfully!");
+    }
+    setSavingSettings(false);
+  };
 
   const fetchProjects = async () => {
     const { data, error } = await supabase
@@ -442,6 +491,17 @@ const Admin = () => {
           >
             <Mail size={20} /> Messages
           </button>
+
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 md:flex-initial flex items-center justify-center md:justify-start gap-3 px-5 py-3.5 rounded-2xl font-bold text-base transition-all ${
+              activeTab === "settings"
+                ? "bg-primary text-white shadow-md"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-100"
+            }`}
+          >
+            <SettingsIcon size={20} /> Settings
+          </button>
         </aside>
 
         {/* CONTENT AREA */}
@@ -619,6 +679,78 @@ const Admin = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TAB 3: SETTINGS */}
+          {activeTab === "settings" && (
+            <div className="flex flex-col gap-6">
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Site Settings
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Update links, contact details, and resume details shown on the homepage.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveSettings} className="flex flex-col gap-5 max-w-xl">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-700">
+                    CV / Resume Link (Google Drive / Dropbox)
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={settings.cv_url}
+                    onChange={(e) =>
+                      setSettings({ ...settings, cv_url: e.target.value })
+                    }
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="https://drive.google.com/..."
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-700">
+                    WhatsApp Phone Number (with Country Code, e.g. 6288294102558)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={settings.phone_number}
+                    onChange={(e) =>
+                      setSettings({ ...settings, phone_number: e.target.value })
+                    }
+                    className="border p-2.5 rounded-xl text-sm font-mono"
+                    placeholder="e.g. 6288294102558"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-700">
+                    Contact Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={settings.email}
+                    onChange={(e) =>
+                      setSettings({ ...settings, email: e.target.value })
+                    }
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. arelarel576@gmail.com"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="bg-tertiary hover:bg-[#5f2f1c] active:scale-95 text-white py-2.5 px-6 rounded-xl font-bold text-sm shadow-sm transition self-start disabled:opacity-50"
+                >
+                  {savingSettings ? "Saving Settings..." : "Save Settings"}
+                </button>
+              </form>
             </div>
           )}
         </section>

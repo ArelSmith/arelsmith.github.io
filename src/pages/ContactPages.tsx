@@ -79,6 +79,28 @@ const ContactPages = () => {
       },
     },
   };
+  const [settings, setSettings] = useState({
+    phone_number: "6288294102558",
+    email: "arelarel576@gmail.com",
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("id", 1)
+        .single();
+      if (data) {
+        setSettings({
+          phone_number: data.phone_number || settings.phone_number,
+          email: data.email || settings.email,
+        });
+      }
+    };
+    fetchSettings();
+  }, []);
+
   useEffect(() => {
     const updateScreenWidth = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -231,7 +253,7 @@ const ContactPages = () => {
                     }
                   : { y: 80, opacity: 0 }
               }
-              to="mailto:arelarel576@gmail.com"
+              to={`mailto:${settings.email}`}
               className="bg-slate-800 text-white p-3 rounded-4xl hover:bg-slate-600 transition"
             >
               <Mail />
@@ -270,8 +292,8 @@ const ContactPages = () => {
               }
               to={
                 isMobile
-                  ? "https://wa.me/6288294102558"
-                  : "https://web.whatsapp.com/send?phone=6288294102558"
+                  ? `https://wa.me/${settings.phone_number}`
+                  : `https://web.whatsapp.com/send?phone=${settings.phone_number}`
               }
               target="_blank"
               className="bg-slate-800 text-white p-3 rounded-4xl hover:bg-slate-600 transition"
