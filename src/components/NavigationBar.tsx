@@ -81,7 +81,7 @@ const NavigationBar = () => {
   return (
     <div>
       <nav
-        className={`fixed top-0 left-0 w-full flex flex-row mx-auto justify-between items-center p-5 z-20 transition ${
+        className={`fixed top-0 left-0 w-full flex flex-row mx-auto justify-between items-center p-5 z-50 transition ${
           isScrolled ? "bg-tertiary" : "bg-none"
         }`}
       >
@@ -127,7 +127,7 @@ const NavigationBar = () => {
         initial="close"
         variants={navVariant}
         animate={hamburgerOpen ? "open" : "close"}
-        className="fixed top-0 left-0 max-w-screen bg-tertiary backdrop-blur-sm opacity-95 w-screen h-screen transition flex items-center justify-center z-10"
+        className="fixed top-0 left-0 max-w-screen bg-tertiary backdrop-blur-sm opacity-95 w-screen h-screen transition flex items-center justify-center z-45"
       >
         <ul className="max-w-xl text-center flex flex-col gap-y-6">
           <motion.li variants={navItemVariant} custom={0.1}>
