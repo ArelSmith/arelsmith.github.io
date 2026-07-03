@@ -98,7 +98,7 @@ const Jumbotron = () => {
               className="flex flex-row justify-around lg:justify-start lg:gap-x-5 lg:w-100"
             >
               <a
-                href="https://drive.google.com/file/d/1aUsb-jkAobkjT35A3XJSNuegJMo5LjEQ/view?usp=sharing"
+                href="https://drive.google.com/file/d/1N8tszeV8zBmDDT6NFS0xzJQ3dQjO13lp/view?usp=sharing"
                 target="_blank"
                 className="text-white bg-tertiary hover:bg-[#5f2f1c] transition duration-150 px-4 py-2 rounded-2xl shadow-xl lg:text-2xl lg:px-6 lg:py-4"
               >

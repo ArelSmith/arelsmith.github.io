@@ -25,6 +25,7 @@ interface Project {
   link: string | null;
   github: string;
   tech: string[];
+  year?: number | string;
 }
 
 interface Message {
@@ -57,6 +58,7 @@ const Admin = () => {
     link: "",
     github: "",
     tech: [],
+    year: "",
   });
   const [techInput, setTechInput] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -205,34 +207,36 @@ const Admin = () => {
 
     setUploadingImage(true);
     try {
-      // Otomatis convert gambar ke WebP di sisi client
       const webpBase64 = await convertToWebP(file);
-      
-      // Ubah ekstensi file asli menjadi .webp untuk penamaan di server
+
       const originalName = file.name;
       const dotIndex = originalName.lastIndexOf(".");
-      const nameWithoutExt = dotIndex !== -1 ? originalName.substring(0, dotIndex) : originalName;
-      const webpFilename = `${nameWithoutExt}.webp`;
+      const nameWithoutExt =
+        dotIndex !== -1 ? originalName.substring(0, dotIndex) : originalName;
+      const webpFilename = `${Date.now()}-${nameWithoutExt}.webp`;
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename: webpFilename,
-          base64: webpBase64,
-        }),
-      });
+      const resBlob = await fetch(webpBase64);
+      const blob = await resBlob.blob();
 
-      if (!res.ok) {
-        throw new Error("Failed to upload image");
+      const { error: uploadError } = await supabase.storage
+        .from("projects")
+        .upload(webpFilename, blob, {
+          contentType: "image/webp",
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
       }
 
-      const data = await res.json();
+      const { data } = supabase.storage
+        .from("projects")
+        .getPublicUrl(webpFilename);
+
       setProjectForm((prev) => ({
         ...prev,
-        image_url: data.url,
+        image_url: data.publicUrl,
       }));
     } catch (err) {
       const error = err as Error;
@@ -249,10 +253,10 @@ const Admin = () => {
       ...projectForm,
       link: projectForm.link || null,
       github: projectForm.github || null,
+      year: projectForm.year ? parseInt(projectForm.year.toString(), 10) || null : null,
     };
 
     if (editingProject?.id) {
-      // Update
       const { error } = await supabase
         .from("projects")
         .update(payload)
@@ -287,6 +291,7 @@ const Admin = () => {
       link: project.link || "",
       github: project.github,
       tech: project.tech,
+      year: project.year || "",
     });
     setIsProjectModalOpen(true);
   };
@@ -465,6 +470,7 @@ const Admin = () => {
                       link: "",
                       github: "",
                       tech: [],
+                      year: "",
                     });
                     setIsProjectModalOpen(true);
                   }}
@@ -727,7 +733,7 @@ const Admin = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm font-bold text-slate-700">
                     Live Demo Link (Optional)
@@ -754,6 +760,20 @@ const Admin = () => {
                     }
                     className="border p-2.5 rounded-xl text-sm"
                     placeholder="https://github.com/ArelSmith/repo"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">
+                    Project Year (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={projectForm.year || ""}
+                    onChange={(e) =>
+                      setProjectForm({ ...projectForm, year: e.target.value })
+                    }
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. 2026"
                   />
                 </div>
               </div>

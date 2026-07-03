@@ -17,6 +17,7 @@ interface ProjectsType {
   link: string | null;
   github: string | null;
   tech: string[] | string;
+  year?: number | string;
 }
 
 const Projects = () => {
@@ -27,15 +28,48 @@ const Projects = () => {
   const [totalCount, setTotalCount] = useState(0);
   const ITEMS_PER_PAGE = 6;
 
+  // Search & Filter state
+  const [search, setSearch] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [availableYears, setAvailableYears] = useState<(number | string)[]>([]);
+
+  // Fetch unique years for filter option
+  useEffect(() => {
+    const fetchYears = async () => {
+      const { data, error } = await supabase.from("projects").select("year");
+      if (!error && data) {
+        const yearsList = Array.from(
+          new Set(data.map((p) => p.year).filter(Boolean)),
+        ).sort((a, b) => Number(b) - Number(a));
+        setAvailableYears(yearsList);
+      }
+    };
+    fetchYears();
+  }, []);
+
+  // Reset page to 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedYear]);
+
   useEffect(() => {
     const fetchProjects = async () => {
       setLoading(true);
       const from = (currentPage - 1) * ITEMS_PER_PAGE;
       const to = from + ITEMS_PER_PAGE - 1;
 
-      const { data, error, count } = await supabase
-        .from("projects")
-        .select("*", { count: "exact" })
+      let query = supabase.from("projects").select("*", { count: "exact" });
+
+      if (search.trim()) {
+        query = query.ilike("title", `%${search}%`);
+      }
+
+      if (selectedYear) {
+        query = query.eq("year", parseInt(selectedYear, 10));
+      }
+
+      const { data, error, count } = await query
+        .order("year", { ascending: false })
         .order("id", { ascending: false })
         .range(from, to);
 
@@ -49,7 +83,7 @@ const Projects = () => {
     };
 
     fetchProjects();
-  }, [currentPage]);
+  }, [currentPage, search, selectedYear]);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -67,6 +101,29 @@ const Projects = () => {
       <div className="min-h-screen flex flex-col gap-y-10 mx-auto items-center mt-[76px] mb-20">
         <h1 className="text-5xl lg:text-7xl font-bold">My Projects</h1>
 
+        {/* SEARCH AND FILTER CONTROLS */}
+        <div className="flex flex-col md:flex-row gap-4 max-w-4xl px-4 justify-between items-center mt-4">
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full md:w-80 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-transparent text-sm bg-white shadow-sm"
+          />
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="w-full md:w-48 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-tertiary focus:border-transparent text-sm bg-white shadow-sm cursor-pointer"
+          >
+            <option value="">All Years</option>
+            {availableYears.map((yr) => (
+              <option key={yr} value={yr}>
+                {yr}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {loading ? (
           <div className="flex flex-col items-center gap-4 mt-20">
             <div className="w-12 h-12 border-4 border-tertiary border-t-transparent rounded-full animate-spin"></div>
@@ -79,8 +136,11 @@ const Projects = () => {
               const projectTech = Array.isArray(project.tech)
                 ? project.tech
                 : typeof project.tech === "string"
-                ? project.tech.split(",").map((t) => t.trim()).filter(Boolean)
-                : [];
+                  ? project.tech
+                      .split(",")
+                      .map((t) => t.trim())
+                      .filter(Boolean)
+                  : [];
 
               return (
                 <li
@@ -88,6 +148,11 @@ const Projects = () => {
                   className="group rounded-lg shadow-md relative w-75 lg:w-150 cursor-pointer overflow-hidden border border-slate-100"
                   onClick={() => handleClick(project)}
                 >
+                  {project.year && (
+                    <div className="absolute top-3 left-3 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm">
+                      {project.year}
+                    </div>
+                  )}
                   {projectImage && (
                     <img
                       src={projectImage}
@@ -97,8 +162,12 @@ const Projects = () => {
                     />
                   )}
                   <div className="transition-all absolute inset-0 bg-white flex flex-col gap-y-2 lg:gap-y-4 justify-center items-center opacity-0 group-hover:opacity-100 p-4">
-                    <h2 className="text-2xl font-semibold text-slate-800">{project.title}</h2>
-                    <p className="text-center text-slate-600">{project.preview}</p>
+                    <h2 className="text-2xl font-semibold text-slate-800">
+                      {project.title}
+                    </h2>
+                    <p className="text-center text-slate-600">
+                      {project.preview}
+                    </p>
                     <div className="flex flex-wrap gap-2 justify-center">
                       {projectTech.map((tech, idx) => (
                         <span
@@ -144,7 +213,9 @@ const Projects = () => {
             ))}
 
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition active:scale-95"
             >

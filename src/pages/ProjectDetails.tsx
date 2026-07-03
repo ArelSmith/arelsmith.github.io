@@ -15,6 +15,7 @@ type Project = {
   link?: string | null;
   github?: string | null;
   tech?: string[] | string;
+  year?: number | string;
 };
 
 const ProjectDetails = () => {
@@ -70,7 +71,16 @@ const ProjectDetails = () => {
         <meta name="description" content={project.body} />
       </Helmet>
       <div className="max-w-5xl h-full mx-auto mt-[76px] flex flex-col gap-y-4 lg:gap-y-8 items-center mb-25">
-        {projectImage && <img src={projectImage} alt={project.title} />}
+        {projectImage && (
+          <div className="relative w-full">
+            <img src={projectImage} alt={project.title} className="w-full h-auto" />
+            {project.year && (
+              <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-xs text-white text-sm font-semibold px-3 py-1.5 rounded-md shadow-md">
+                {project.year}
+              </div>
+            )}
+          </div>
+        )}
         <h1 className="text-4xl font-bold">{project.title}</h1>
         <p className="p-5 lg:p-0 text-center text-lg">{project.body}</p>
         
