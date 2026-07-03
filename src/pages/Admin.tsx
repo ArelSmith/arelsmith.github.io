@@ -13,6 +13,7 @@ import {
   Lock,
   User as UserIcon,
   Settings as SettingsIcon,
+  Briefcase,
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
@@ -42,7 +43,7 @@ const Admin = () => {
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"projects" | "messages" | "settings">(
+  const [activeTab, setActiveTab] = useState<"projects" | "messages" | "experiences" | "settings">(
     "projects",
   );
 
@@ -80,6 +81,33 @@ const Admin = () => {
   // Messages State
   const [messages, setMessages] = useState<Message[]>([]);
 
+  // Experiences State
+  interface Experience {
+    id?: number;
+    company: string;
+    role: string;
+    type: string;
+    start_date: string;
+    end_date: string;
+    location: string;
+    description: string;
+    skills: string[];
+  }
+  const [experiences, setExperiences] = useState<Experience[]>([]);
+  const [isExperienceModalOpen, setIsExperienceModalOpen] = useState(false);
+  const [editingExperience, setEditingExperience] = useState<Experience | null>(null);
+  const [experienceForm, setExperienceForm] = useState<Experience>({
+    company: "",
+    role: "",
+    type: "",
+    start_date: "",
+    end_date: "",
+    location: "",
+    description: "",
+    skills: [],
+  });
+  const [expSkillInput, setExpSkillInput] = useState("");
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -100,8 +128,54 @@ const Admin = () => {
       fetchProjects();
       fetchMessages();
       fetchSettings();
+      fetchExperiences();
     }
   }, [user]);
+
+  const fetchExperiences = async () => {
+    const { data, error } = await supabase
+      .from("experiences")
+      .select("*")
+      .order("id", { ascending: false });
+    if (!error && data) {
+      setExperiences(data);
+    }
+  };
+
+  const handleSaveExperience = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...experienceForm,
+    };
+
+    if (editingExperience?.id) {
+      const { error } = await supabase
+        .from("experiences")
+        .update(payload)
+        .eq("id", editingExperience.id);
+      if (error) alert(error.message);
+      else {
+        setIsExperienceModalOpen(false);
+        setEditingExperience(null);
+        fetchExperiences();
+      }
+    } else {
+      const { error } = await supabase.from("experiences").insert([payload]);
+      if (error) alert(error.message);
+      else {
+        setIsExperienceModalOpen(false);
+        fetchExperiences();
+      }
+    }
+  };
+
+  const handleDeleteExperience = async (id: number) => {
+    if (confirm("Are you sure you want to delete this experience?")) {
+      const { error } = await supabase.from("experiences").delete().eq("id", id);
+      if (error) alert(error.message);
+      else fetchExperiences();
+    }
+  };
 
   const fetchSettings = async () => {
     const { data, error } = await supabase
@@ -493,6 +567,17 @@ const Admin = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab("experiences")}
+            className={`flex-1 md:flex-initial flex items-center justify-center md:justify-start gap-3 px-5 py-3.5 rounded-2xl font-bold text-base transition-all ${
+              activeTab === "experiences"
+                ? "bg-primary text-white shadow-md"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-100"
+            }`}
+          >
+            <Briefcase size={20} /> Experiences
+          </button>
+
+          <button
             onClick={() => setActiveTab("settings")}
             className={`flex-1 md:flex-initial flex items-center justify-center md:justify-start gap-3 px-5 py-3.5 rounded-2xl font-bold text-base transition-all ${
               activeTab === "settings"
@@ -678,6 +763,109 @@ const Admin = () => {
                     No messages received yet.
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: EXPERIENCES */}
+          {activeTab === "experiences" && (
+            <div className="flex flex-col gap-6">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    Manage Experiences
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    Add, edit, or remove your professional work history.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingExperience(null);
+                    setExperienceForm({
+                      company: "",
+                      role: "",
+                      type: "",
+                      start_date: "",
+                      end_date: "",
+                      location: "",
+                      description: "",
+                      skills: [],
+                    });
+                    setIsExperienceModalOpen(true);
+                  }}
+                  className="bg-tertiary hover:bg-[#5f2f1c] active:scale-95 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm transition"
+                >
+                  <Plus size={16} /> New Experience
+                </button>
+              </div>
+
+              {/* EXPERIENCES TABLE */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs font-bold uppercase">
+                      <th className="py-3 px-4">Company</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Period</th>
+                      <th className="py-3 px-4">Skills</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 text-sm">
+                    {experiences.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-slate-50/50 transition">
+                        <td className="py-4 px-4 font-bold text-slate-800">
+                          {exp.company}
+                        </td>
+                        <td className="py-4 px-4 text-slate-600 font-medium">
+                          {exp.role} ({exp.type})
+                        </td>
+                        <td className="py-4 px-4 text-slate-500 font-mono text-xs">
+                          {exp.start_date} - {exp.end_date}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {exp.skills.map((s, idx) => (
+                              <span key={idx} className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingExperience(exp);
+                                setExperienceForm({ ...exp });
+                                setIsExperienceModalOpen(true);
+                              }}
+                              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                              title="Edit Experience"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => exp.id && handleDeleteExperience(exp.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                              title="Delete Experience"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {experiences.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-10 text-slate-400">
+                          No experiences listed. Add one to get started.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -971,6 +1159,181 @@ const Admin = () => {
                   Save Changes
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* --- ADD / EDIT EXPERIENCE MODAL --- */}
+      {isExperienceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="bg-primary text-white p-6 flex justify-between items-center">
+              <h3 className="text-xl font-bold">
+                {editingExperience ? "Edit Experience" : "Add New Experience"}
+              </h3>
+              <button
+                onClick={() => setIsExperienceModalOpen(false)}
+                className="text-white/80 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveExperience} className="p-6 overflow-y-auto flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Company Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.company}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, company: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. MGG Software"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Role / Position</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.role}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, role: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. Software Engineer"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Job Type</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.type}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, type: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. Full-time (Remote)"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Location</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.location}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, location: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. Malang"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">Start Date</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.start_date}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, start_date: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. Aug 2025"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-700">End Date</label>
+                  <input
+                    type="text"
+                    required
+                    value={experienceForm.end_date}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, end_date: e.target.value })}
+                    className="border p-2.5 rounded-xl text-sm"
+                    placeholder="e.g. Present"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-slate-700">Job Description</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={experienceForm.description}
+                  onChange={(e) => setExperienceForm({ ...experienceForm, description: e.target.value })}
+                  className="border p-2.5 rounded-xl text-sm resize-none"
+                  placeholder="Describe your achievements and tasks..."
+                />
+              </div>
+
+              {/* SKILLS INPUT */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-slate-700">Skills / Technologies Used</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={expSkillInput}
+                    onChange={(e) => setExpSkillInput(e.target.value)}
+                    className="border p-2.5 rounded-xl text-sm flex-grow"
+                    placeholder="e.g. Java Spring Boot"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (expSkillInput.trim() && !experienceForm.skills.includes(expSkillInput.trim())) {
+                          setExperienceForm({
+                            ...experienceForm,
+                            skills: [...experienceForm.skills, expSkillInput.trim()],
+                          });
+                          setExpSkillInput("");
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (expSkillInput.trim() && !experienceForm.skills.includes(expSkillInput.trim())) {
+                        setExperienceForm({
+                          ...experienceForm,
+                          skills: [...experienceForm.skills, expSkillInput.trim()],
+                        });
+                        setExpSkillInput("");
+                      }
+                    }}
+                    className="bg-primary text-white px-4 rounded-xl font-bold text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {experienceForm.skills.map((s, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium border"
+                    >
+                      {s}
+                      <button
+                        type="button"
+                        onClick={() => setExperienceForm({
+                          ...experienceForm,
+                          skills: experienceForm.skills.filter((_, i) => i !== idx),
+                        })}
+                        className="text-red-500 hover:text-red-700 font-bold"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="bg-tertiary hover:bg-[#5f2f1c] active:scale-95 text-white py-3 rounded-xl font-bold text-sm mt-4 shadow-md transition"
+              >
+                {editingExperience ? "Update Experience" : "Add Experience"}
+              </button>
             </form>
           </div>
         </div>

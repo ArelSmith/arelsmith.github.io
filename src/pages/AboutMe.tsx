@@ -1,9 +1,10 @@
 import Layout from "@/Layout";
 import aboutMeThumbnail from "@/assets/profile_about_me.webp";
-import { useContext, useState, type FC } from "react";
+import { useContext, useState, useEffect, type FC } from "react";
 import { motion } from "motion/react";
 import AnimationProvider from "@/context/Animation/AnimationProvider";
 import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabase";
 
 import image1 from "@/assets/image_1.webp";
 import image2 from "@/assets/image_2.webp";
@@ -279,6 +280,140 @@ const MySkill: FC = () => {
   );
 };
 
+interface ExperienceType {
+  id?: number;
+  company: string;
+  role: string;
+  type: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+  description: string;
+  skills: string[];
+}
+
+const ProfessionalExperience: FC = () => {
+  const [experiences, setExperiences] = useState<ExperienceType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      const { data, error } = await supabase
+        .from("experiences")
+        .select("*")
+        .order("id", { ascending: false });
+      if (!error && data) {
+        setExperiences(data);
+      }
+      setLoading(false);
+    };
+    fetchExperiences();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-10/12 mx-auto flex flex-col items-center gap-4 mt-20 mb-20">
+        <div className="w-12 h-12 border-4 border-tertiary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-slate-800 font-semibold">Loading experiences...</p>
+      </div>
+    );
+  }
+
+  if (experiences.length === 0) return null;
+
+  return (
+    <div className="w-10/12 mx-auto flex flex-col gap-y-16 mt-32 mb-20">
+      {/* Title */}
+      <h1 className="text-3xl lg:text-5xl font-semibold text-slate-800 text-center">
+        Professional Experience
+      </h1>
+
+      {/* Vertical Timeline container */}
+      <div className="relative border-l-2 border-slate-400 ml-4 md:ml-0 md:border-l-0 md:before:absolute md:before:left-1/2 md:before:h-full md:before:w-0.5 md:before:bg-slate-400">
+        {experiences.map((exp, idx) => {
+          const isEven = idx % 2 === 0;
+          return (
+            <div
+              key={idx}
+              className={`relative mb-16 flex flex-col md:flex-row ${
+                isEven ? "md:flex-row-reverse" : ""
+              }`}
+            >
+              {/* Timeline Dot */}
+              <div className="absolute -left-[9px] top-6 md:left-1/2 md:-translate-x-1/2 z-10 w-4 h-4 bg-slate-900 rounded-full border-4 border-white shadow-md"></div>
+
+              {/* Content Panel */}
+              <div className="w-full md:w-5/12 pl-8 md:pl-0 md:px-8 flex flex-col items-start md:items-stretch">
+                {/* Date / Location Info Box */}
+                <div className="inline-flex items-center gap-x-4 bg-secondary text-white rounded-2xl px-5 py-2.5 text-xs font-semibold shadow-md mb-4 self-start">
+                  <div className="text-center min-w-16">
+                    <span className="block text-white font-bold text-sm">
+                      {exp.start_date}
+                    </span>
+                    <span className="block text-slate-400 font-normal uppercase text-[9px] mt-0.5">
+                      Start
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-slate-600"></div>
+                  <div className="text-center min-w-16">
+                    <span className="block text-white font-bold text-sm">
+                      {exp.end_date}
+                    </span>
+                    <span className="block text-slate-400 font-normal uppercase text-[9px] mt-0.5">
+                      End
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-slate-600"></div>
+                  <div className="text-center min-w-16">
+                    <span className="block text-white font-bold text-sm">
+                      {exp.location}
+                    </span>
+                    <span className="block text-slate-400 font-normal uppercase text-[9px] mt-0.5">
+                      Location
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main Job Card */}
+                <div className="bg-[#f3f4f6]/60 border border-slate-100 rounded-3xl p-6 shadow-md hover:shadow-lg transition duration-200 w-full">
+                  <h3 className="text-2xl font-bold text-slate-800 mb-1">
+                    {exp.company}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-x-2 text-sm text-slate-500 mb-4">
+                    <span className="font-semibold text-slate-700">
+                      {exp.role}
+                    </span>
+                    <span>•</span>
+                    <span>{exp.type}</span>
+                  </div>
+                  <p className="text-slate-600 text-sm leading-relaxed mb-6">
+                    {exp.description}
+                  </p>
+
+                  {/* Skill badges */}
+                  <div className="flex flex-wrap gap-2">
+                    {exp.skills.map((skill, sIdx) => (
+                      <span
+                        key={sIdx}
+                        className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 px-3.5 rounded-2xl shadow-xs"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Spacer for desktop layout alignment */}
+              <div className="hidden md:block md:w-5/12"></div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const AboutMe: FC = () => {
   return (
     <AnimationProvider>
@@ -290,6 +425,7 @@ const AboutMe: FC = () => {
         <Jumbotron />
         <SelfDetail />
         <MySkill />
+        <ProfessionalExperience />
         <Footer />
       </Layout>
     </AnimationProvider>
